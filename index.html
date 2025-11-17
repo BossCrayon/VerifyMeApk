@@ -104,14 +104,13 @@
         // --- Configuration ---
         // This is the Firestore path where the app's config will be stored.
         // It's public, so any user can read it.
-        const getConfigDocPath = (appId) => `artifacts/${appId}/public/data/app-config/latest`;
+        const getConfigDocPath = () => "app-config/latest";
         
         // Default config to create if one doesn't exist
         // This makes first-time setup easier.
         const defaultConfig = {
             version: "1.0.0",
-            // IMPORTANT: This is now a direct, public URL
-            directUrl: "https://example.com/host-your-apk-and-paste-link-here.apk"
+            directUrl: "" 
         };
         // ---------------------
 

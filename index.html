@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- EDIT THIS: Change to your app's name -->
+    <title>Your App Name</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- PWA Theme Color -->
+    <meta name="theme-color" content="#317EFB">
+    
+    <!-- PWA Manifest (inlined as a data URI) -->
+    <!-- EDIT THIS: Update "Your App Name", "App", and the icon URLs in the JSON -->
+    <!-- I've fixed the syntax error by replacing '#' with '%23' for the colors -->
+    <link rel="manifest" href='data:application/json,{"name":"Your App Name","short_name":"App","start_url":".","display":"standalone","background_color":"%23111827","theme_color":"%23317EFB","icons":[{"src":"https://placehold.co/192x192/317EFB/FFFFFF?text=Icon","sizes":"192x192","type":"image/png"},{"src":"https://placehold.co/512x512/317EFB/FFFFFF?text=Icon","sizes":"512x512","type":"image/png"}]}'>
+    
+    <!-- Apple Touch Icon (for iOS "Add to Home Screen") -->
+    <!-- EDIT THIS: Replace with a link to your 180x180 icon -->
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/317EFB/FFFFFF?text=Icon">
+
+    <style>
+        /* Using Inter font from Tailwind's default config */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Style for the disabled button */
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <!-- Loading spinner -->
+    <div id="loader" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;">
+        <span class="text-white text-xl">Loading App...</span>
+    </div>
+
+    <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+        
+        <!-- 1. App Icon -->
+        <!-- EDIT THIS: Replace 'src' with a link to your app's icon -->
+        <img 
+            src="epwdlogo.png" 
+            alt="App Icon"
+            class="w-32 h-32 mx-auto rounded-3xl shadow-lg mb-6"
+            onerror="this.src='https://placehold.co/128x128/333/FFF?text=Error'"
+        >
+
+        <!-- 2. App Name -->
+        <!-- EDIT THIS: Change to your app's name -->
+        <h1 class="text-3xl font-bold mb-2">Your App Name</h1>
+        
+        <!-- 3. App Description -->
+        <!-- EDIT THIS: Change to your app's description -->
+        <p class="text-gray-400 mb-8">
+            A short, catchy description of what your amazing application does.
+        </p>
+
+        <!-- 4. Download Button -->
+        <!-- This button is now controlled by the Firebase script below -->
+        <a 
+            id="download-btn"
+            href="#" 
+            class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-transform transform focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 text-lg btn-disabled"
+        >
+            <span id="download-text">Loading download link...</span>
+        </a>
+        <p id="version-text" class="text-gray-500 text-sm mt-2">Loading version...</p>
+
+        <!-- How to Install Section -->
+        <div class="text-left mt-8 pt-6 border-t border-gray-700">
+            <h2 class="text-lg font-semibold mb-3 text-gray-200">How to Install:</h2>
+            <ol class="list-decimal list-inside text-gray-400 space-y-2 text-sm">
+                <li>Download the <strong>.apk</strong> file.</li>
+                <li>Open your phone's <strong>Settings</strong> app.</li>
+                <li>
+                    Go to <strong>Apps</strong> &gt; <strong>Special app access</strong> &gt; <strong>Install unknown apps</strong>.
+                </li>
+                <li>Select your browser (e.g., Chrome).</li>
+                <li>Toggle on <strong>"Allow from this source"</strong>.</li>
+                <li>Open the downloaded file and install it.</li>
+            </ol>
+            <p class="text-xs text-gray-500 mt-4">
+                *This setting is required because the app is not being installed from the Google Play Store.
+            </p>
+        </div>
+
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        // NOTE: All Auth modules have been removed.
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const loader = document.getElementById('loader');
+
+        // --- Configuration ---
+        // This is the Firestore path where the app's config will be stored.
+        // It's public, so any user can read it.
+        const getConfigDocPath = (appId) => `artifacts/${appId}/public/data/app-config/latest`;
+        
+        // Default config to create if one doesn't exist
+        // This makes first-time setup easier.
+        const defaultConfig = {
+            version: "1.0.0",
+            // IMPORTANT: This is now a direct, public URL
+            directUrl: "https://example.com/host-your-apk-and-paste-link-here.apk"
+        };
+        // ---------------------
+
+        // Get Firebase config from global variables provided by the environment
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "AIzaSyAKnQnewkHWQAk4u64JL2KZDLvH38WAcFQ",
+                authDomain: "my-app-download-page.firebaseapp.com",
+                projectId: "my-app-download-page",
+                storageBucket: "my-app-download-page.firebasestorage.app",
+                messagingSenderId: "33399703488",
+                appId: "1:33399703488:web:8523a3aab8b35ab32f6a25"
+                };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Initialize Firebase
+        setLogLevel('Debug'); // For easier debugging
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app); // We only need Firestore
+
+        // Get button elements
+        const downloadBtn = document.getElementById('download-btn');
+        const downloadText = document.getElementById('download-text');
+        const versionText = document.getElementById('version-text');
+
+        // --- All Authentication code (onAuthStateChanged, signIn) has been removed ---
+
+        // Function to load app config from Firestore
+        async function loadAppConfig() {
+            const configDocRef = doc(db, getConfigDocPath(appId));
+
+            try {
+                const docSnap = await getDoc(configDocRef);
+
+                let config;
+                if (docSnap.exists()) {
+                    // Config found!
+                    console.log("Found app config in Firestore.");
+                    config = docSnap.data();
+                } else {
+                    // Config not found! Let's create a default one to help the user.
+                    // NOTE: This setDoc will only work if your rules are open, or if you run this as an authenticated admin.
+                    // For a user on the free plan, it's better to create this document manually in the console.
+                    console.warn("No app config found. Creating default config in Firestore.");
+                    console.warn(`Please update the document at: ${getConfigDocPath(appId)}`);
+                    
+                    try {
+                        await setDoc(configDocRef, defaultConfig);
+                        config = defaultConfig;
+                        // Show a message for the developer/user
+                        alertUser("App not configured. Created default config in Firestore. Please update the 'directUrl' field in that document.");
+                    } catch (e) {
+                         console.error("Could not create default config (this is expected if security rules are locked): ", e.message);
+                         alertUser("App not configured. Please create the config document in your Firestore console.");
+                         config = defaultConfig; // Use default in memory
+                    }
+                }
+
+                // Update UI with config values
+                versionText.textContent = `Version ${config.version || '1.0.0'}`;
+                
+                // Validate and set the download link
+                if (config.directUrl && config.directUrl !== defaultConfig.directUrl) {
+                    downloadBtn.href = config.directUrl;
+                    downloadBtn.setAttribute('download', ''); // Let the browser handle the filename
+                    downloadText.textContent = 'Download .APK File';
+                    downloadBtn.classList.remove('btn-disabled');
+                    downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    console.log('Successfully set download URL:', config.directUrl);
+                } else {
+                    // The URL is still the placeholder
+                    console.error("Config 'directUrl' is missing or is still the placeholder.");
+                    downloadText.textContent = 'App not configured';
+                    downloadBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                    downloadBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                }
+
+            } catch (error) {
+                console.error("Error loading app config from Firestore: ", error);
+                
+                // This is the most likely error if rules are not set
+                if(error.code === 'permission-denied') {
+                    console.error("PERMISSION DENIED. Please check your Firestore security rules.");
+                    alertUser("Error: Could not read app data. Check Firestore rules.");
+                    downloadText.textContent = 'Permission Denied';
+                } else {
+                    downloadText.textContent = 'Error loading config';
+                }
+                
+                versionText.textContent = 'Error';
+                downloadBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                downloadBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            } finally {
+                loader.style.display = 'none'; // Hide loader
+            }
+        }
+        
+        // Helper to show a custom, non-blocking alert
+        function alertUser(message) {
+            const alertBox = document.createElement('div');
+            alertBox.style = "position:fixed;top:10px;left:50%;transform:translateX(-50%);background:gold;color:black;padding:10px 20px;border-radius:8px;z-index:10000;font-weight:bold;box-shadow:0 4px 10px rgba(0,0,0,0.3);";
+            alertBox.textContent = message;
+            document.body.appendChild(alertBox);
+            setTimeout(() => {
+                alertBox.remove();
+            }, 6000);
+        }
+
+        // Start the process directly, no sign-in needed.
+        console.log("Loading app config...");
+        loadAppConfig();
+
+    </script>
+
+</body>
+</html>

@@ -179,14 +179,19 @@
                 versionText.textContent = `Version ${config.version || '1.0.0'}`;
                 
                 // Validate and set the download link
-                if (config.directUrl && config.directUrl !== defaultConfig.directUrl) {
-                    downloadBtn.href = config.directUrl;
-                    downloadBtn.setAttribute('download', ''); // Let the browser handle the filename
-                    downloadText.textContent = 'Download .APK File';
-                    downloadBtn.classList.remove('btn-disabled');
-                    downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    console.log('Successfully set download URL:', config.directUrl);
-                } else {
+                // Validate and set the download link
+                    if (config.directUrl && config.directUrl !== defaultConfig.directUrl) {
+                        downloadBtn.href = config.directUrl;
+                        
+                        // Add this line to open download in a new tab
+                        downloadBtn.target = "_blank"; 
+
+                        downloadBtn.setAttribute('download', ''); 
+                        downloadText.textContent = 'Download .APK File';
+                        downloadBtn.classList.remove('btn-disabled');
+                        downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        console.log('Successfully set download URL:', config.directUrl);
+                    } else {
                     // The URL is still the placeholder
                     console.error("Config 'directUrl' is missing or is still the placeholder.");
                     downloadText.textContent = 'App not configured';

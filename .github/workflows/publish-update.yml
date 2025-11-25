@@ -1,0 +1,49 @@
+name: Update Firestore on Release
+
+# This triggers the action only when you PUBLISH a release
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-database:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Check out your code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      # 3. Install dependencies (firebase-admin)
+      - name: Install Dependencies
+        run: npm install
+
+      # 4. Find the APK URL in the release assets
+      - name: Get APK URL
+        id: get_apk
+        shell: bash
+        run: |
+          # This magic command looks through the release assets for a file ending in .apk
+          # and grabs its download URL.
+          APK_URL=$(jq -r '.release.assets[] | select(.name | endswith(".apk")) | .browser_download_url' $GITHUB_EVENT_PATH)
+          
+          echo "Found APK URL: $APK_URL"
+          
+          # Save it so the next step can use it
+          echo "apk_url=$APK_URL" >> $GITHUB_OUTPUT
+
+      # 5. Run the script we created in Phase 3
+      - name: Update Firestore
+        env:
+          # Pass the secret key
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          # Pass the version (tag name, e.g., v1.0.2)
+          NEW_VERSION: ${{ github.event.release.tag_name }}
+          # Pass the URL found in step 4
+          NEW_URL: ${{ steps.get_apk.outputs.apk_url }}
+        run: node update-firestore.js
